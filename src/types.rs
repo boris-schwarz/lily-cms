@@ -18,5 +18,5 @@ pub mod prelude {
         http::StatusCode,
         routing::{delete, get, post, put},
     };
-    pub use lily_macros::GeneratePayload;
+    pub use lily_macros::lily_type;
 }
