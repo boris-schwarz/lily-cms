@@ -19,19 +19,9 @@ target/
 .env.production
 .env.*.local
 
-# IDE specific files
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-
 # OS specific files
 .DS_Store
 Thumbs.db
-
-# Bruno API testing
-.bruno/
 
 # Logs
 logs/

@@ -20,13 +20,18 @@ fn to_snake_case(input: &str) -> String {
 
     result
 }
+
 #[proc_macro_derive(GeneratePayload, attributes(metadata))]
 pub fn generate_payload(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
+    println!("📦 input parsed...");
+
     // get the name of the struct
     let name: syn::Ident = input.ident;
     let snake_name: String = to_snake_case(&name.to_string());
+
+    println!("📦 name parsed");
 
     // generate payload struct name
     let payload_name: syn::Ident = format_ident!("{}Payload", name);
@@ -34,6 +39,8 @@ pub fn generate_payload(input: TokenStream) -> TokenStream {
     // generate url paths
     let base_path: String = format!("/{}", snake_name);
     let base_path_with_id: String = format!("/{}/{{id}}", snake_name);
+
+    println!("📦 payload and path path parsed");
 
     // get struct fields
     let fields = match input.data {
@@ -43,6 +50,8 @@ pub fn generate_payload(input: TokenStream) -> TokenStream {
         },
         _ => panic!("Only structs are supported"),
     };
+
+    println!("📦 fields parsed");
 
     // filter out metadata annotated fields
     let payload_fields = fields.iter().filter(|field| {
@@ -57,8 +66,18 @@ pub fn generate_payload(input: TokenStream) -> TokenStream {
             .expect("Named fields should have identifiers")
     });
 
+    // ❓❓ debug output
+    let output = quote! {
+        // generate the type's payload
+        #[derive(Clone, Debug, serde::Deserialize)]
+        pub struct #payload_name {
+            #(#payload_fields,)*
+        }
+    };
+    return output.into();
+
     // generate output
-    /*
+    /* TODO
     id: String,
     created_at: String,
     created_by: String,
@@ -182,5 +201,9 @@ pub fn generate_payload(input: TokenStream) -> TokenStream {
     println!("\n{}\n\n{}\n\n", info, output);
 
     // return the output
-    output.into()
+    let token_stream = output.into();
+
+    println!("📦📦📦 token stream 📦📦📦\n{}", token_stream);
+
+    token_stream
 }

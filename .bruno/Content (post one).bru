@@ -1,0 +1,18 @@
+meta {
+  name: Content (post one)
+  type: http
+  seq: 5
+}
+
+post {
+  url: http://127.0.0.1:3000/content
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "body": "this is my body",
+    "summary": "this is my summary"
+  }
+}
