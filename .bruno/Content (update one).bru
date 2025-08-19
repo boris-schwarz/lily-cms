@@ -1,0 +1,22 @@
+meta {
+  name: Content (update one)
+  type: http
+  seq: 6
+}
+
+put {
+  url: http://127.0.0.1:3000/content/some-uuid-here
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "body": "New body here",
+    "summary": "New summary here"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
