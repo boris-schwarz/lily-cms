@@ -1,6 +1,6 @@
 pub use lily_cms::types::prelude::*;
 
-#[lily_type]
+#[expose_struct]
 pub struct Content {
     body: String,
     summary: String,
@@ -10,17 +10,9 @@ pub struct Content {
 impl Content {
     fn new() -> Self {
         Content {
-            id: String::from("86e4fc36-7ce7-4d22-b5a0-5bd819804cce"),
-            body: String::from("#header\nthis is some content\n- check this\n- out"),
-            summary: String::from("really interesting fact about something"),
-            created_at: chrono::Utc::now(),
-        }
-    }
-    fn invalid() -> Self {
-        Content {
-            id: String::from(""),
-            body: String::from(""),
-            summary: String::from(""),
+            id: String::from("11111111-2222-3333-4444-555555555555"),
+            body: String::from("#Doloribus Quia\nTenetur delectus rem:\n- Eveniet\n- Fugiat"),
+            summary: String::from("Lorem ipsum dolor sit amet consectetur adipisicing elit."),
             created_at: chrono::Utc::now(),
         }
     }
@@ -32,17 +24,14 @@ impl Repository<Content, ContentPayload> for Content {
         Ok(payload.into())
     }
 
-    fn read_one(id: String) -> Result<Content, Error> {
+    fn read_one(id: &String) -> Result<Option<Content>, Error> {
         if let "invalid" = id.as_str() {
             return Err(Error::Unknown);
         }
-        Ok(Content::new())
+        Ok(Some(Content::new()))
     }
 
     fn read_all() -> Result<Vec<Content>, Error> {
-        if 1 == 2 {
-            return Err(Error::Unknown);
-        }
         Ok(vec![
             Content::new(),
             Content::new(),
@@ -57,8 +46,7 @@ impl Repository<Content, ContentPayload> for Content {
         Ok(content)
     }
 
-    fn delete_one(id: String) -> Result<Content, Error> {
-        println!("deleting {id}");
-        Ok(Content::new())
+    fn delete_one(id: String) -> Result<(), Error> {
+        Ok(())
     }
 }

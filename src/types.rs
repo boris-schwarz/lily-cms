@@ -3,20 +3,22 @@ use std::fmt::Debug;
 
 pub trait Repository<T, U>: Clone + Debug + serde::Serialize {
     fn create_one(payload: U) -> Result<T, Error>;
-    fn read_one(id: String) -> Result<T, Error>;
+    fn read_one(id: &String) -> Result<Option<T>, Error>;
     fn read_all() -> Result<Vec<T>, Error>;
     fn update_one(id: String, payload: U) -> Result<T, Error>;
-    fn delete_one(id: String) -> Result<T, Error>;
+    fn delete_one(id: String) -> Result<(), Error>;
 }
 
 pub mod prelude {
     pub use super::Repository;
     pub use crate::Error;
+    pub use crate::problems::Problem;
     pub use axum::{
         Json, Router,
         extract::Path,
         http::StatusCode,
+        response::IntoResponse,
         routing::{delete, get, post, put},
     };
-    pub use lily_macros::lily_type;
+    pub use lily_macros::expose_struct;
 }

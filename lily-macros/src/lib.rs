@@ -4,11 +4,9 @@ use syn::parse::Parser;
 use syn::{Fields, ItemStruct, parse_macro_input, parse_quote};
 
 #[proc_macro_attribute]
-pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    // Get the struct
+pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    // Get the struct and related information
     let mut struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
-
-    // Create the code for the payload struct
     let original_struct_name: &syn::Ident = &struct_ast.ident;
     let payload_name: syn::Ident = format_ident!("{}Payload", original_struct_name);
     let original_fields = if let Fields::Named(fields) = &struct_ast.fields {
@@ -16,6 +14,8 @@ pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
     } else {
         panic!("This macro only works on structs with named fields");
     };
+
+    // Create the code for the payload-struct
     let payload_struct_code = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
         pub struct #payload_name {
@@ -23,7 +23,7 @@ pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    // Create the code for the from/into implementation
+    // Create the code for the from/into implementation for the payload-struct
     let field_names = original_fields.iter().map(|f| &f.ident);
     let payload_from_into_code = quote! {
         impl From<#payload_name> for #original_struct_name {
@@ -50,7 +50,7 @@ pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
         fields.named.insert(1, created_at_field);
     }
 
-    // Add derives to the original struct
+    // Add derive attributes to the original struct
     let derives: syn::Attribute = parse_quote! {
         #[derive(Clone, Debug, serde::Serialize)]
     };
@@ -58,84 +58,87 @@ pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Create code for the module's get_routes()
     let snake_name: String = to_snake_case(&original_struct_name.to_string());
-    let base_path: String = format!("/{}", snake_name);
-    let base_path_with_id: String = format!("/{}/{{id}}", snake_name);
+    let route_path: String = format!("/{}", snake_name);
+    let route_path_with_id: String = format!("/{}/{{id}}", snake_name);
     let get_routes_code = quote! {
         pub fn get_routes() -> Router {
             Router::new()
-                .route(#base_path, post(derived_create_one))
-                .route(#base_path_with_id, get(derived_read_one))
-                .route(#base_path, get(derived_read_all))
-                .route(#base_path_with_id, put(derived_update_one))
-                .route(#base_path_with_id, delete(derived_delete_one))
+                .route(#route_path, post(route_for_create_one))
+                .route(#route_path_with_id, get(route_for_read_one))
+                .route(#route_path, get(route_for_read_all))
+                .route(#route_path_with_id, put(route_for_update_one))
+                .route(#route_path_with_id, delete(route_for_delete_one))
         }
 
-        // generate "create one"
-        pub async fn derived_create_one(
+        // route for "create one"
+        async fn route_for_create_one(
             Json(payload): Json<#payload_name>,
-        ) -> (StatusCode, Json<#original_struct_name>) {
-            let r: Result<#original_struct_name, Error> = #original_struct_name::create_one(payload);
+        ) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
+            let result: Result<#original_struct_name, Error> = #original_struct_name::create_one(payload);
 
-            match r {
-                Ok(data) => (StatusCode::CREATED, Json(data)),
+            match result {
+                Ok(data) => (StatusCode::CREATED, Json(Some(data))).into_response(),
                 Err(error_msg) => {
                     eprintln!(concat!("Error creating one [", #snake_name, "]: {}"), error_msg);
-                    (StatusCode::NOT_FOUND, Json(#original_struct_name::invalid()))
+                    Problem::InternalError.to_json_problem().into_response()
                 }
             }
         }
 
-        // generate "read one"
-        pub async fn derived_read_one(Path(id): Path<String>) -> (StatusCode, Json<#original_struct_name>) {
-            let r: Result<#original_struct_name, Error> = #original_struct_name::read_one(id);
+        // route for "read one"
+        async fn route_for_read_one(Path(id): Path<String>) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
+            let result: Result<Option<#original_struct_name>, Error> = #original_struct_name::read_one(&id);
 
-            match r {
-                Ok(data) => (StatusCode::OK, Json(data)),
+            match result {
+                Ok(option) => match option {
+                    Some(data) => (StatusCode::OK, Json(Some(data))).into_response(),
+                    None => StatusCode::NOT_FOUND.into_response()
+                },
                 Err(error_msg) => {
                     eprintln!(concat!("Error fetching one [", #snake_name, "]: {}"), error_msg);
-                    (StatusCode::NOT_FOUND, Json(#original_struct_name::invalid()))
+                    Problem::ResourceNotFound{resource: #snake_name.to_string(), id}.to_json_problem().into_response()
                 }
             }
         }
 
-        // generate "read all"
-        pub async fn derived_read_all() -> (StatusCode, Json<Vec<#original_struct_name>>) {
-            let r: Result<Vec<#original_struct_name>, Error> = #original_struct_name::read_all();
+        // route for "read all"
+        async fn route_for_read_all() -> impl IntoResponse/* (StatusCode, Json<Option<Vec<#original_struct_name>>>) */ {
+            let result: Result<Vec<#original_struct_name>, Error> = #original_struct_name::read_all();
 
-            match r {
-                Ok(data) => (StatusCode::OK, Json(data)),
+            match result {
+                Ok(data) => (StatusCode::OK, Json(Some(data))).into_response(),
                 Err(error_msg) => {
                     eprintln!(concat!("Error fetching all [", #snake_name, "]: {}"), error_msg);
-                    (StatusCode::NOT_FOUND, Json(Vec::new()))
+                    Problem::InternalError.to_json_problem().into_response()
                 }
             }
         }
 
-        // generate "update one"
-        pub async fn derived_update_one(
+        // route for "update one"
+        async fn route_for_update_one(
             Path(id): Path<String>,
             Json(payload): Json<#payload_name>,
-        ) -> (StatusCode, Json<#original_struct_name>) {
-            let r: Result<#original_struct_name, Error> = #original_struct_name::update_one(id, payload);
+        ) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
+            let result: Result<#original_struct_name, Error> = #original_struct_name::update_one(id, payload);
 
-            match r {
-                Ok(data) => (StatusCode::OK, Json(data)),
+            match result {
+                Ok(data) => (StatusCode::OK, Json(Some(data))).into_response(),
                 Err(error_msg) => {
                     eprintln!(concat!("Error updating one [", #snake_name, "]: {}"), error_msg);
-                    (StatusCode::NOT_FOUND, Json(#original_struct_name::invalid()))
+                    Problem::InternalError.to_json_problem().into_response()
                 }
             }
         }
 
-        // generate "delete one"
-        pub async fn derived_delete_one(Path(id): Path<String>) -> (StatusCode, Json<#original_struct_name>) {
-            let r: Result<#original_struct_name, Error> = #original_struct_name::delete_one(id);
+        // route for "delete one"
+        async fn route_for_delete_one(Path(id): Path<String>) -> impl IntoResponse/* StatusCode */ {
+            let result: Result<(), Error> = #original_struct_name::delete_one(id);
 
-            match r {
-                Ok(data) => (StatusCode::OK, Json(data)),
+            match result {
+                Ok(_) => StatusCode::NO_CONTENT.into_response(),
                 Err(error_msg) => {
                     eprintln!(concat!("Error deleting one [", #snake_name, "]: {}"), error_msg);
-                    (StatusCode::NOT_FOUND, Json(#original_struct_name::invalid()))
+                    Problem::InternalError.to_json_problem().into_response()
                 }
             }
         }
@@ -148,10 +151,6 @@ pub fn lily_type(_attr: TokenStream, item: TokenStream) -> TokenStream {
         #payload_from_into_code
         #get_routes_code
     };
-
-    // Print the generated code during compilation
-    let info: String = format!("📦📦📦 generated code for [{}] 📦📦📦", snake_name);
-    println!("\n{}\n\n{}\n\n", info, output);
 
     output.into()
 }
