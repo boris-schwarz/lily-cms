@@ -1,0 +1,22 @@
+meta {
+  name: Content (create one, invalid)
+  type: http
+  seq: 7
+}
+
+post {
+  url: http://127.0.0.1:3000/content
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "body": "invalid",
+    "summary": "this is my summary"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
