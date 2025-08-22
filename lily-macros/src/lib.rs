@@ -73,36 +73,41 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         // route for "create one"
         async fn route_for_create_one(
             Json(payload): Json<#payload_name>,
-        ) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
-            let result: Result<#original_struct_name, Error> = #original_struct_name::create_one(payload);
+        ) -> ApiResponse<#original_struct_name> {
+            let result: Result<#original_struct_name, Error> = #original_struct_name::create_one(&payload);
 
             match result {
-                Ok(data) => (StatusCode::CREATED, Json(Some(data))).into_response(),
-                Err(error_msg) => {
-                    eprintln!(concat!("Error creating one [", #snake_name, "]: {}"), error_msg);
-                    Problem::InternalError.to_json_problem().into_response()
+                Ok(data) => ApiResponse::Created(data),
+                Err(error) => match error {
+                    _ => {
+                        eprintln!(concat!("Error creating one [", #snake_name, "]: {}"), error);
+                        ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
+                    }
                 }
             }
         }
 
         // route for "read one"
-        async fn route_for_read_one(Path(id): Path<String>) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
+        async fn route_for_read_one(Path(id): Path<String>) -> ApiResponse<#original_struct_name> {
             let result: Result<Option<#original_struct_name>, Error> = #original_struct_name::read_one(&id);
 
             match result {
                 Ok(option) => match option {
-                    Some(data) => (StatusCode::OK, Json(Some(data))).into_response(),
-                    None => StatusCode::NOT_FOUND.into_response()
+                    Some(data) => ApiResponse::Ok(data),
+                    None => ApiResponse::NotFound(Problem::ResourceNotFound {
+                        resource: #snake_name.to_string(),
+                        id: id,
+                    }),
                 },
-                Err(error_msg) => {
-                    eprintln!(concat!("Error fetching one [", #snake_name, "]: {}"), error_msg);
-                    Problem::ResourceNotFound{resource: #snake_name.to_string(), id}.to_json_problem().into_response()
+                Err(error) => {
+                    eprintln!(concat!("Error fetching one [", #snake_name, "]: {}"), error);
+                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
                 }
             }
         }
 
         // route for "read all"
-        async fn route_for_read_all() -> impl IntoResponse/* (StatusCode, Json<Option<Vec<#original_struct_name>>>) */ {
+        async fn route_for_read_all() -> impl IntoResponse {
             let result: Result<Vec<#original_struct_name>, Error> = #original_struct_name::read_all();
 
             match result {
@@ -118,8 +123,8 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         async fn route_for_update_one(
             Path(id): Path<String>,
             Json(payload): Json<#payload_name>,
-        ) -> impl IntoResponse/* (StatusCode, Json<Option<#original_struct_name>>) */ {
-            let result: Result<#original_struct_name, Error> = #original_struct_name::update_one(id, payload);
+        ) -> impl IntoResponse {
+            let result: Result<#original_struct_name, Error> = #original_struct_name::update_one(&id, &payload);
 
             match result {
                 Ok(data) => (StatusCode::OK, Json(Some(data))).into_response(),
@@ -131,8 +136,8 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         // route for "delete one"
-        async fn route_for_delete_one(Path(id): Path<String>) -> impl IntoResponse/* StatusCode */ {
-            let result: Result<(), Error> = #original_struct_name::delete_one(id);
+        async fn route_for_delete_one(Path(id): Path<String>) -> impl IntoResponse {
+            let result: Result<(), Error> = #original_struct_name::delete_one(&id);
 
             match result {
                 Ok(_) => StatusCode::NO_CONTENT.into_response(),

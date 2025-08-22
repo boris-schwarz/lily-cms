@@ -1,4 +1,4 @@
-pub use lily_cms::types::prelude::*;
+pub use lily_cms::prelude::*;
 
 #[expose_struct]
 pub struct Content {
@@ -20,13 +20,24 @@ impl Content {
 
 // MARK: Repository
 impl Repository<Content, ContentPayload> for Content {
-    fn create_one(payload: ContentPayload) -> Result<Content, Error> {
-        Ok(payload.into())
+    fn create_one(payload: &ContentPayload) -> Result<Content, Error> {
+        if let "invalid" = payload.body.as_str() {
+            return Err(Error::Example);
+        }
+        Ok(Content {
+            id: String::from("11111111-2222-3333-4444-555555555555"),
+            body: payload.body.clone(),
+            summary: payload.body.clone(),
+            created_at: chrono::Utc::now(),
+        })
     }
 
     fn read_one(id: &String) -> Result<Option<Content>, Error> {
         if let "invalid" = id.as_str() {
             return Err(Error::Unknown);
+        }
+        if let "unknown" = id.as_str() {
+            return Ok(None);
         }
         Ok(Some(Content::new()))
     }
@@ -40,13 +51,17 @@ impl Repository<Content, ContentPayload> for Content {
         ])
     }
 
-    fn update_one(id: String, payload: ContentPayload) -> Result<Content, Error> {
-        let mut content: Content = payload.into();
-        content.id = id;
+    fn update_one(id: &String, payload: &ContentPayload) -> Result<Content, Error> {
+        let content: Content = Content {
+            id: id.clone(),
+            body: payload.body.clone(),
+            summary: payload.body.clone(),
+            created_at: chrono::Utc::now(),
+        };
         Ok(content)
     }
 
-    fn delete_one(id: String) -> Result<(), Error> {
+    fn delete_one(id: &String) -> Result<(), Error> {
         Ok(())
     }
 }

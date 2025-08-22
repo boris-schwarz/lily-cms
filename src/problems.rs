@@ -11,7 +11,7 @@ pub struct JsonProblem {
     type_uri: String,
     title: String,
     #[serde(with = "http_serde::status_code")]
-    status: StatusCode,
+    pub status: StatusCode,
     detail: String,
 }
 
@@ -38,21 +38,33 @@ pub enum Problem {
 impl Problem {
     pub fn to_json_problem(self) -> JsonProblem {
         match self {
-            Problem::ResourceNotFound { resource, id } => JsonProblem {
-                type_uri: "/errors/resource-not-found".to_string(),
-                title: "Resource Not Found".to_string(),
-                status: StatusCode::NOT_FOUND,
-                detail: format!(
-                    "The resource '{}' with id '{}' was not found.",
-                    resource, id
-                ),
-            },
-            Problem::InternalError => JsonProblem {
-                type_uri: "/errors/internal-server-error".to_string(),
-                title: "Internal Server Error".to_string(),
-                status: StatusCode::INTERNAL_SERVER_ERROR,
-                detail: "An unexpected error occurred on the server.".to_string(),
-            },
+            Problem::ResourceNotFound { resource, id } => {
+                let status_code = StatusCode::NOT_FOUND;
+                JsonProblem {
+                    type_uri: "/errors/resource-not-found".to_string(),
+                    title: status_code
+                        .canonical_reason()
+                        .unwrap_or(status_code.as_str())
+                        .to_owned(),
+                    status: status_code,
+                    detail: format!(
+                        "The resource '{}' with id '{}' was not found.",
+                        resource, id
+                    ),
+                }
+            }
+            Problem::InternalError => {
+                let status_code = StatusCode::INTERNAL_SERVER_ERROR;
+                JsonProblem {
+                    type_uri: "/errors/internal-server-error".to_string(),
+                    title: status_code
+                        .canonical_reason()
+                        .unwrap_or(status_code.as_str())
+                        .to_owned(),
+                    status: status_code,
+                    detail: "An unexpected error occurred on the server.".to_string(),
+                }
+            }
         }
     }
 }
