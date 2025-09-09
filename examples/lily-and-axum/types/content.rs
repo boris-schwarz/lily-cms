@@ -2,8 +2,9 @@ pub use lily_cms::prelude::*;
 
 #[expose_struct]
 pub struct Content {
+    title: String,
     body: String,
-    summary: String,
+    summary: Option<String>,
 }
 
 // 🐞 this is for debugging only
@@ -11,23 +12,27 @@ impl Content {
     fn new() -> Self {
         Content {
             id: String::from("11111111-2222-3333-4444-555555555555"),
+            title: String::from("Lorem Ipsum"),
             body: String::from("#Doloribus Quia\nTenetur delectus rem:\n- Eveniet\n- Fugiat"),
-            summary: String::from("Lorem ipsum dolor sit amet consectetur adipisicing elit."),
+            summary: Some(String::from(
+                "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
+            )),
             created_at: chrono::Utc::now(),
         }
     }
 }
 
 // MARK: Repository
-impl Repository<Content, ContentPayload> for Content {
-    fn create_one(payload: &ContentPayload) -> Result<Content, Error> {
+impl Repository<Content, ContentFullPayload> for Content {
+    fn create_one(payload: &ContentFullPayload) -> Result<Content, Error> {
         if let "invalid" = payload.body.as_str() {
             return Err(Error::Example);
         }
         Ok(Content {
             id: String::from("11111111-2222-3333-4444-555555555555"),
+            title: payload.title.clone(),
             body: payload.body.clone(),
-            summary: payload.body.clone(),
+            summary: payload.summary.clone(),
             created_at: chrono::Utc::now(),
         })
     }
@@ -51,11 +56,12 @@ impl Repository<Content, ContentPayload> for Content {
         ])
     }
 
-    fn update_one(id: &String, payload: &ContentPayload) -> Result<Content, Error> {
+    fn update_one(id: &String, payload: &ContentFullPayload) -> Result<Content, Error> {
         let content: Content = Content {
             id: id.clone(),
+            title: payload.title.clone(),
             body: payload.body.clone(),
-            summary: payload.body.clone(),
+            summary: payload.summary.clone(),
             created_at: chrono::Utc::now(),
         };
         Ok(content)
