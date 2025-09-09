@@ -107,14 +107,14 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
 
         // route for "read all"
-        async fn route_for_read_all() -> impl IntoResponse {
+        async fn route_for_read_all() -> ApiResponse<Vec<#original_struct_name>> {
             let result: Result<Vec<#original_struct_name>, Error> = #original_struct_name::read_all();
 
             match result {
-                Ok(data) => (StatusCode::OK, Json(Some(data))).into_response(),
+                Ok(data) => ApiResponse::Ok(data),
                 Err(error_msg) => {
                     eprintln!(concat!("Error fetching all [", #snake_name, "]: {}"), error_msg);
-                    Problem::InternalError.to_json_problem().into_response()
+                    ApiResponse::Erroneous::<Vec<#original_struct_name>>(Problem::InternalError)
                 }
             }
         }
@@ -123,27 +123,27 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
         async fn route_for_update_one(
             Path(id): Path<String>,
             Json(payload): Json<#payload_name>,
-        ) -> impl IntoResponse {
+        ) -> ApiResponse<#original_struct_name> {
             let result: Result<#original_struct_name, Error> = #original_struct_name::update_one(&id, &payload);
 
             match result {
-                Ok(data) => (StatusCode::OK, Json(Some(data))).into_response(),
+                Ok(data) => ApiResponse::Ok(data),
                 Err(error_msg) => {
                     eprintln!(concat!("Error updating one [", #snake_name, "]: {}"), error_msg);
-                    Problem::InternalError.to_json_problem().into_response()
+                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
                 }
             }
         }
 
         // route for "delete one"
-        async fn route_for_delete_one(Path(id): Path<String>) -> impl IntoResponse {
+        async fn route_for_delete_one(Path(id): Path<String>) -> ApiResponse<#original_struct_name> {
             let result: Result<(), Error> = #original_struct_name::delete_one(&id);
 
             match result {
-                Ok(_) => StatusCode::NO_CONTENT.into_response(),
+                Ok(_) => ApiResponse::NoContent,
                 Err(error_msg) => {
                     eprintln!(concat!("Error deleting one [", #snake_name, "]: {}"), error_msg);
-                    Problem::InternalError.to_json_problem().into_response()
+                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
                 }
             }
         }
