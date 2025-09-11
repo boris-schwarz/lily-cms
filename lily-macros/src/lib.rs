@@ -1,14 +1,48 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
-use syn::parse::Parser;
-use syn::{Fields, ItemStruct, parse_macro_input, parse_quote};
+use std::collections::HashSet;
+use syn::{
+    Fields, Ident, ItemStruct, Token, parse::Parser, parse_macro_input, parse_quote,
+    punctuated::Punctuated,
+};
+
+mod routing;
 
 #[proc_macro_attribute]
-pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn expose_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // MARK: 🔖 Init
+
+    // Define all possible actions
+    const ALL_ACTIONS: &[&str] = &[
+        "read_one",     // GET
+        "read_many",    // GET
+        "create_one",   // POST
+        "create_many",  // POST
+        "replace_one",  // PUT
+        "replace_many", // PUT
+        "update_one",   // PATCH
+        "update_many",  // PATCH
+        "delete_one",   // DELETE
+        "delete_many",  // DELETE
+    ];
+
+    // Parse macro arguments
+    let args = Punctuated::<Ident, Token![,]>::parse_terminated
+        .parse(attr)
+        .expect("Failed to parse macro arguments");
+
+    // Create boolean flags based on the parsed arguments
+    let enabled_actions: HashSet<String> = if args.is_empty() {
+        ALL_ACTIONS.iter().map(|s| s.to_string()).collect()
+    } else {
+        args.iter().map(|ident| ident.to_string()).collect()
+    };
+
+    // MARK: 🔖 Struct
     // Get the struct and related information
     let mut struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
     let original_struct_name: &syn::Ident = &struct_ast.ident;
-    let payload_name: syn::Ident = format_ident!("{}Payload", original_struct_name);
+    let full_payload_name: syn::Ident = format_ident!("{}FullPayload", original_struct_name);
     let original_fields = if let Fields::Named(fields) = &struct_ast.fields {
         &fields.named
     } else {
@@ -18,7 +52,7 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Create the code for the payload-struct
     let payload_struct_code = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
-        pub struct #payload_name {
+        pub struct #full_payload_name {
             #original_fields
         }
     };
@@ -26,8 +60,8 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     // Create the code for the from/into implementation for the payload-struct
     let field_names = original_fields.iter().map(|f| &f.ident);
     let payload_from_into_code = quote! {
-        impl From<#payload_name> for #original_struct_name {
-            fn from(payload: #payload_name) -> Self {
+        impl From<#full_payload_name> for #original_struct_name {
+            fn from(payload: #full_payload_name) -> Self {
                 #original_struct_name {
                     id: String::new(),
                     created_at: chrono::Utc::now(),
@@ -56,99 +90,97 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     struct_ast.attrs.push(derives);
 
-    // Create code for the module's get_routes()
+    // MARK: 🔖 Routers
     let snake_name: String = to_snake_case(&original_struct_name.to_string());
     let route_path: String = format!("/{}", snake_name);
     let route_path_with_id: String = format!("/{}/{{id}}", snake_name);
+
+    // Create code for the router "create_one" (POST)
+    let create_one_router_code = enabled_actions
+        .contains("create_one")
+        .then(|| routing::get_create_one_router(&route_path));
+
+    // Create code for the router "read_one" (GET)
+    let read_one_router_code = enabled_actions
+        .contains("read_one")
+        .then(|| routing::get_read_one_router(&route_path_with_id));
+
+    // Create code for the router "read_many" (GET)
+    let read_many_router_code = enabled_actions
+        .contains("read_many")
+        .then(|| routing::get_read_many_router(&route_path));
+
+    // Create code for the router "update_one" (PATCH)
+    let update_one_router_code = enabled_actions
+        .contains("update_one")
+        .then(|| routing::get_update_one_router(&route_path_with_id));
+
+    // Create code for the router "replace_one" (PUT)
+    let replace_one_router_code = enabled_actions
+        .contains("replace_one")
+        .then(|| routing::get_replace_one_router(&route_path_with_id));
+
+    // Create code for the router "delete_one" (DELETE)
+    let delete_one_router_code = enabled_actions
+        .contains("delete_one")
+        .then(|| routing::get_delete_one_router(&route_path_with_id));
+
+    // Create code for the handler "create_one" (GET)
+    let create_one_handler_code = enabled_actions.contains("create_one").then(|| {
+        routing::get_create_one_handler(&original_struct_name, &full_payload_name, &snake_name)
+    });
+
+    // MARK: 🔖 Handlers
+    // Create code for the handler "read_one" (GET)
+    let read_one_handler_code = enabled_actions
+        .contains("read_one")
+        .then(|| routing::get_read_one_handler(&original_struct_name, &snake_name));
+
+    // Create code for the handler "read_many" (GET)
+    let read_many_handler_code = enabled_actions
+        .contains("read_many")
+        .then(|| routing::get_read_many_handler(&original_struct_name, &snake_name));
+
+    // Create code for the handler "update_one" (PATCH)
+    let update_one_handler_code = enabled_actions.contains("update_one").then(|| {
+        routing::get_update_one_handler(&original_struct_name, &full_payload_name, &snake_name)
+    });
+
+    // Create code for the handler "replace_one" (PATCH)
+    let replace_one_handler_code = enabled_actions.contains("replace_one").then(|| {
+        routing::get_replace_one_handler(&original_struct_name, &full_payload_name, &snake_name)
+    });
+
+    // Create code for the handler "delete_one" (PATCH)
+    let delete_one_handler_code = enabled_actions
+        .contains("delete_one")
+        .then(|| routing::get_delete_one_handler(&original_struct_name, &snake_name));
+
+    // --------------------------------------------------------
+
+    // Create code for the module's get_routes()
     let get_routes_code = quote! {
         pub fn get_routes() -> Router {
-            Router::new()
-                .route(#route_path, post(route_for_create_one))
-                .route(#route_path_with_id, get(route_for_read_one))
-                .route(#route_path, get(route_for_read_all))
-                .route(#route_path_with_id, put(route_for_update_one))
-                .route(#route_path_with_id, delete(route_for_delete_one))
+            let router = Router::new();
+            #create_one_router_code
+            #read_one_router_code
+            #read_many_router_code
+            #update_one_router_code
+            #replace_one_router_code
+            #delete_one_router_code
+
+            router
         }
 
-        // route for "create one"
-        async fn route_for_create_one(
-            Json(payload): Json<#payload_name>,
-        ) -> ApiResponse<#original_struct_name> {
-            let result: Result<#original_struct_name, Error> = #original_struct_name::create_one(&payload);
-
-            match result {
-                Ok(data) => ApiResponse::Created(data),
-                Err(error) => match error {
-                    _ => {
-                        eprintln!(concat!("Error creating one [", #snake_name, "]: {}"), error);
-                        ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
-                    }
-                }
-            }
-        }
-
-        // route for "read one"
-        async fn route_for_read_one(Path(id): Path<String>) -> ApiResponse<#original_struct_name> {
-            let result: Result<Option<#original_struct_name>, Error> = #original_struct_name::read_one(&id);
-
-            match result {
-                Ok(option) => match option {
-                    Some(data) => ApiResponse::Ok(data),
-                    None => ApiResponse::NotFound(Problem::ResourceNotFound {
-                        resource: #snake_name.to_string(),
-                        id: id,
-                    }),
-                },
-                Err(error) => {
-                    eprintln!(concat!("Error fetching one [", #snake_name, "]: {}"), error);
-                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
-                }
-            }
-        }
-
-        // route for "read all"
-        async fn route_for_read_all() -> ApiResponse<Vec<#original_struct_name>> {
-            let result: Result<Vec<#original_struct_name>, Error> = #original_struct_name::read_all();
-
-            match result {
-                Ok(data) => ApiResponse::Ok(data),
-                Err(error_msg) => {
-                    eprintln!(concat!("Error fetching all [", #snake_name, "]: {}"), error_msg);
-                    ApiResponse::Erroneous::<Vec<#original_struct_name>>(Problem::InternalError)
-                }
-            }
-        }
-
-        // route for "update one"
-        async fn route_for_update_one(
-            Path(id): Path<String>,
-            Json(payload): Json<#payload_name>,
-        ) -> ApiResponse<#original_struct_name> {
-            let result: Result<#original_struct_name, Error> = #original_struct_name::update_one(&id, &payload);
-
-            match result {
-                Ok(data) => ApiResponse::Ok(data),
-                Err(error_msg) => {
-                    eprintln!(concat!("Error updating one [", #snake_name, "]: {}"), error_msg);
-                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
-                }
-            }
-        }
-
-        // route for "delete one"
-        async fn route_for_delete_one(Path(id): Path<String>) -> ApiResponse<#original_struct_name> {
-            let result: Result<(), Error> = #original_struct_name::delete_one(&id);
-
-            match result {
-                Ok(_) => ApiResponse::NoContent,
-                Err(error_msg) => {
-                    eprintln!(concat!("Error deleting one [", #snake_name, "]: {}"), error_msg);
-                    ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
-                }
-            }
-        }
+        #create_one_handler_code
+        #read_one_handler_code
+        #read_many_handler_code
+        #update_one_handler_code
+        #replace_one_handler_code
+        #delete_one_handler_code
     };
 
+    // MARK: 🔖 Build
     // Generate code
     let output = quote! {
         #struct_ast
@@ -160,6 +192,16 @@ pub fn expose_struct(_attr: TokenStream, item: TokenStream) -> TokenStream {
     output.into()
 }
 
+/// Converts a string from lowerCamelCase to snake_case
+///
+/// # Examples
+/// ```
+/// let snake_case: String = to_snake_case("lowerCamelCase");
+/// ```
+///
+/// # Note
+/// This function was created by Claude Code
+/// TODO: Verify that it's doing what it should do
 fn to_snake_case(input: &str) -> String {
     let mut result = String::new();
 

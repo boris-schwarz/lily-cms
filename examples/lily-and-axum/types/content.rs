@@ -22,6 +22,18 @@ impl Content {
     }
 }
 
+impl GetOne<Content> for Content {
+    fn get_one(id: &String) -> Result<Option<Content>, Error> {
+        if let "invalid" = id.as_str() {
+            return Err(Error::Unknown);
+        }
+        if let "unknown" = id.as_str() {
+            return Ok(None);
+        }
+        Ok(Some(Content::new()))
+    }
+}
+
 // MARK: Repository
 impl Repository<Content, ContentFullPayload> for Content {
     fn create_one(payload: &ContentFullPayload) -> Result<Content, Error> {
