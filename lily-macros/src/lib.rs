@@ -1,6 +1,7 @@
 use proc_macro::TokenStream;
 use quote::{format_ident, quote};
 use std::collections::HashSet;
+use strum::IntoEnumIterator;
 use syn::{
     Fields, Ident, ItemStruct, Token, parse::Parser, parse_macro_input, parse_quote,
     punctuated::Punctuated,
@@ -8,23 +9,34 @@ use syn::{
 
 mod routing;
 
-#[proc_macro_attribute]
-pub fn expose_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
-    // MARK: 🔖 Init
+struct StructNames {
+    original: syn::Ident,
+    snake_case: String,
+    post_payload_name: syn::Ident,
+    patch_payload_name: syn::Ident,
+}
+impl StructNames {
+    fn new(ast: &ItemStruct) -> Self {
+        let struct_name: syn::Ident = ast.ident.clone();
+        let snake_case = to_snake_case(&struct_name.to_string());
+        StructNames {
+            post_payload_name: format_ident!("Post{}", &struct_name),
+            patch_payload_name: format_ident!("Patch{}", &struct_name),
+            original: struct_name,
+            snake_case: snake_case,
+        }
+    }
+}
 
-    // Define all possible actions
-    const ALL_ACTIONS: &[&str] = &[
-        "read_one",     // GET
-        "read_many",    // GET
-        "create_one",   // POST
-        "create_many",  // POST
-        "replace_one",  // PUT
-        "replace_many", // PUT
-        "update_one",   // PATCH
-        "update_many",  // PATCH
-        "delete_one",   // DELETE
-        "delete_many",  // DELETE
-    ];
+#[proc_macro_attribute]
+pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
+    // MARK: 🔖 Init
+    let mut struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
+    let struct_names = StructNames::new(&struct_ast);
+    let original_struct_name: &syn::Ident = &struct_names.original;
+    let post_payload_name: &syn::Ident = &struct_names.post_payload_name;
+    let patch_payload_name: &syn::Ident = &struct_names.patch_payload_name;
+    let snake_name: &String = &struct_names.snake_case;
 
     // Parse macro arguments
     let args = Punctuated::<Ident, Token![,]>::parse_terminated
@@ -33,41 +45,35 @@ pub fn expose_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // Create boolean flags based on the parsed arguments
     let enabled_actions: HashSet<String> = if args.is_empty() {
-        ALL_ACTIONS.iter().map(|s| s.to_string()).collect()
+        routing::Routes::iter()
+            .map(|route| route.get_path().to_owned())
+            .collect()
     } else {
         args.iter().map(|ident| ident.to_string()).collect()
     };
 
-    // MARK: 🔖 Struct
+    // MARK: 🔖Struct
     // Get the struct and related information
-    let mut struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
-    let original_struct_name: &syn::Ident = &struct_ast.ident;
-    let full_payload_name: syn::Ident = format_ident!("{}FullPayload", original_struct_name);
     let original_fields = if let Fields::Named(fields) = &struct_ast.fields {
         &fields.named
     } else {
         panic!("This macro only works on structs with named fields");
     };
 
-    // Create the code for the payload-struct
-    let payload_struct_code = quote! {
+    // Create the code for the POST payload struct
+    let post_payload_code: proc_macro2::TokenStream = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
-        pub struct #full_payload_name {
+        pub struct #post_payload_name {
             #original_fields
         }
     };
 
-    // Create the code for the from/into implementation for the payload-struct
-    let field_names = original_fields.iter().map(|f| &f.ident);
-    let payload_from_into_code = quote! {
-        impl From<#full_payload_name> for #original_struct_name {
-            fn from(payload: #full_payload_name) -> Self {
-                #original_struct_name {
-                    id: String::new(),
-                    created_at: chrono::Utc::now(),
-                    #(#field_names: payload.#field_names,)*
-                }
-            }
+    // Create the code for the PATCH payload struct
+    let patch_payload_code: proc_macro2::TokenStream = quote! {
+        #[derive(Clone, Debug, serde::Deserialize)]
+        pub struct #patch_payload_name {
+            // TODO: Make all Option<OriginalType>
+            #original_fields
         }
     };
 
@@ -90,103 +96,43 @@ pub fn expose_struct(attr: TokenStream, item: TokenStream) -> TokenStream {
     };
     struct_ast.attrs.push(derives);
 
-    // MARK: 🔖 Routers
-    let snake_name: String = to_snake_case(&original_struct_name.to_string());
-    let route_path: String = format!("/{}", snake_name);
-    let route_path_with_id: String = format!("/{}/{{id}}", snake_name);
+    // MARK: 🔖Endpoints
+    let router_code: Vec<proc_macro2::TokenStream> = routing::Routes::iter()
+        .map(|route| {
+            routing::get_endpoint_handler_code(
+                &struct_names,
+                &route,
+                enabled_actions.contains(route.get_path()),
+            )
+        })
+        .collect();
 
-    // Create code for the router "create_one" (POST)
-    let create_one_router_code = enabled_actions
-        .contains("create_one")
-        .then(|| routing::get_create_one_router(&route_path));
+    let impl_endpoint_code = quote! {
+        impl Endpoint for #original_struct_name {
+            type PostPayload = #post_payload_name;
+            type PatchPayload = #patch_payload_name;
 
-    // Create code for the router "read_one" (GET)
-    let read_one_router_code = enabled_actions
-        .contains("read_one")
-        .then(|| routing::get_read_one_router(&route_path_with_id));
-
-    // Create code for the router "read_many" (GET)
-    let read_many_router_code = enabled_actions
-        .contains("read_many")
-        .then(|| routing::get_read_many_router(&route_path));
-
-    // Create code for the router "update_one" (PATCH)
-    let update_one_router_code = enabled_actions
-        .contains("update_one")
-        .then(|| routing::get_update_one_router(&route_path_with_id));
-
-    // Create code for the router "replace_one" (PUT)
-    let replace_one_router_code = enabled_actions
-        .contains("replace_one")
-        .then(|| routing::get_replace_one_router(&route_path_with_id));
-
-    // Create code for the router "delete_one" (DELETE)
-    let delete_one_router_code = enabled_actions
-        .contains("delete_one")
-        .then(|| routing::get_delete_one_router(&route_path_with_id));
-
-    // Create code for the handler "create_one" (GET)
-    let create_one_handler_code = enabled_actions.contains("create_one").then(|| {
-        routing::get_create_one_handler(&original_struct_name, &full_payload_name, &snake_name)
-    });
-
-    // MARK: 🔖 Handlers
-    // Create code for the handler "read_one" (GET)
-    let read_one_handler_code = enabled_actions
-        .contains("read_one")
-        .then(|| routing::get_read_one_handler(&original_struct_name, &snake_name));
-
-    // Create code for the handler "read_many" (GET)
-    let read_many_handler_code = enabled_actions
-        .contains("read_many")
-        .then(|| routing::get_read_many_handler(&original_struct_name, &snake_name));
-
-    // Create code for the handler "update_one" (PATCH)
-    let update_one_handler_code = enabled_actions.contains("update_one").then(|| {
-        routing::get_update_one_handler(&original_struct_name, &full_payload_name, &snake_name)
-    });
-
-    // Create code for the handler "replace_one" (PATCH)
-    let replace_one_handler_code = enabled_actions.contains("replace_one").then(|| {
-        routing::get_replace_one_handler(&original_struct_name, &full_payload_name, &snake_name)
-    });
-
-    // Create code for the handler "delete_one" (PATCH)
-    let delete_one_handler_code = enabled_actions
-        .contains("delete_one")
-        .then(|| routing::get_delete_one_handler(&original_struct_name, &snake_name));
-
-    // --------------------------------------------------------
-
-    // Create code for the module's get_routes()
-    let get_routes_code = quote! {
-        pub fn get_routes() -> Router {
-            let router = Router::new();
-            #create_one_router_code
-            #read_one_router_code
-            #read_many_router_code
-            #update_one_router_code
-            #replace_one_router_code
-            #delete_one_router_code
-
-            router
+            fn get_name() -> String {
+                #snake_name.to_owned()
+            }
+            fn get_path() -> String {
+                format!("/{}", Self::get_name())
+            }
+            fn get_path_with_id() -> String {
+                format!("/{}/{{id}}", Self::get_name())
+            }
+            #(#router_code)*
         }
 
-        #create_one_handler_code
-        #read_one_handler_code
-        #read_many_handler_code
-        #update_one_handler_code
-        #replace_one_handler_code
-        #delete_one_handler_code
     };
 
-    // MARK: 🔖 Build
+    // MARK: 🔖Build
     // Generate code
     let output = quote! {
         #struct_ast
-        #payload_struct_code
-        #payload_from_into_code
-        #get_routes_code
+        #post_payload_code
+        #patch_payload_code
+        #impl_endpoint_code
     };
 
     output.into()

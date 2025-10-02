@@ -1,6 +1,6 @@
 pub use lily_cms::prelude::*;
 
-#[expose_struct]
+#[endpoint(read_one, create_one)]
 pub struct Content {
     title: String,
     body: String,
@@ -22,8 +22,19 @@ impl Content {
     }
 }
 
-impl GetOne<Content> for Content {
-    fn get_one(id: &String) -> Result<Option<Content>, Error> {
+impl CreateOne<Content> for Content {
+    fn create_one(payload: &<Content as Endpoint>::PostPayload) -> Result<Content, Error> {
+        Ok(Content {
+            id: String::from("insert-uuid-here"),
+            title: payload.title.clone(),
+            body: payload.body.clone(),
+            summary: payload.summary.clone(),
+            created_at: chrono::Utc::now(),
+        })
+    }
+}
+impl ReadOne<Content> for Content {
+    fn read_one(id: &String) -> Result<Option<Content>, Error> {
         if let "invalid" = id.as_str() {
             return Err(Error::Unknown);
         }
@@ -35,8 +46,8 @@ impl GetOne<Content> for Content {
 }
 
 // MARK: Repository
-impl Repository<Content, ContentFullPayload> for Content {
-    fn create_one(payload: &ContentFullPayload) -> Result<Content, Error> {
+/* impl Repository<Content, PostContent> for Content {
+    /*  fn create_one(payload: &PostContent) -> Result<Content, Error> {
         if let "invalid" = payload.body.as_str() {
             return Err(Error::Example);
         }
@@ -57,7 +68,7 @@ impl Repository<Content, ContentFullPayload> for Content {
             return Ok(None);
         }
         Ok(Some(Content::new()))
-    }
+    } */
 
     fn read_all() -> Result<Vec<Content>, Error> {
         Ok(vec![
@@ -68,7 +79,7 @@ impl Repository<Content, ContentFullPayload> for Content {
         ])
     }
 
-    fn update_one(id: &String, payload: &ContentFullPayload) -> Result<Content, Error> {
+    fn update_one(id: &String, payload: &PostContent) -> Result<Content, Error> {
         let content: Content = Content {
             id: id.clone(),
             title: payload.title.clone(),
@@ -83,3 +94,4 @@ impl Repository<Content, ContentFullPayload> for Content {
         Ok(())
     }
 }
+ */

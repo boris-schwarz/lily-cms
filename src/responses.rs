@@ -1,3 +1,5 @@
+//! Defines the primary `ApiResponse` type used by all Axum handlers.
+
 use crate::problems::Problem;
 use axum::{
     Json,
@@ -6,6 +8,12 @@ use axum::{
 };
 use serde::Serialize;
 
+/// A generic enum for all API responses, simplifying handler return types.
+///
+/// This enum acts as a unified return type for Axum handlers, encapsulating all
+/// possible successful and unsuccessful outcomes. It leverages Axum's [`IntoResponse`]
+/// trait to automatically map each variant to the correct HTTP status code and
+/// response body, reducing boilerplate in the handler functions.
 pub enum ApiResponse<T: Serialize> {
     Ok(T),
     Created(T),
@@ -14,6 +22,8 @@ pub enum ApiResponse<T: Serialize> {
     Erroneous(Problem),
 }
 
+/// Converts the `ApiResponse` into a concrete `axum::response::Response` and
+/// maps each variant to the appropriate HTTP status code and body format.
 impl<T: Serialize> IntoResponse for ApiResponse<T> {
     fn into_response(self) -> Response {
         match self {
