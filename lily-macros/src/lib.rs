@@ -97,20 +97,14 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
     struct_ast.attrs.push(derives);
 
     // MARK: 🔖Endpoints
-    let router_code: Vec<proc_macro2::TokenStream> = routing::Routes::iter()
-        .map(|route| {
-            routing::get_endpoint_handler_code(
-                &struct_names,
-                &route,
-                enabled_actions.contains(route.get_path()),
-            )
-        })
-        .collect();
+    let impl_route_builder_code: proc_macro2::TokenStream =
+        routing::get_route_builder(&struct_names);
 
     let impl_endpoint_code = quote! {
         impl Endpoint for #original_struct_name {
+            type Id = String;
             type PostPayload = #post_payload_name;
-            type PatchPayload = #patch_payload_name;
+            // type PatchPayload = #patch_payload_name;
 
             fn get_name() -> String {
                 #snake_name.to_owned()
@@ -121,7 +115,6 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
             fn get_path_with_id() -> String {
                 format!("/{}/{{id}}", Self::get_name())
             }
-            #(#router_code)*
         }
 
     };
@@ -133,6 +126,7 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
         #post_payload_code
         #patch_payload_code
         #impl_endpoint_code
+        #impl_route_builder_code
     };
 
     output.into()

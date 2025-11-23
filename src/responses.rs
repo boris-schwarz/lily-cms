@@ -20,6 +20,8 @@ pub enum ApiResponse<T: Serialize> {
     NoContent,
     NotFound(Problem),
     Erroneous(Problem),
+    // Escape hatch for special cases, avoid using
+    Custom(StatusCode, T),
 }
 
 /// Converts the `ApiResponse` into a concrete `axum::response::Response` and
@@ -37,6 +39,9 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
             ApiResponse::Erroneous(problem) => {
                 let json_problem = problem.to_json_problem();
                 (json_problem.status, Json(json_problem)).into_response()
+            }
+            ApiResponse::Custom(status_code, content) => {
+                (status_code, Json(content)).into_response()
             }
         }
     }

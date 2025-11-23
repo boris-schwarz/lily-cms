@@ -22,19 +22,8 @@ impl Content {
     }
 }
 
-impl CreateOne<Content> for Content {
-    fn create_one(payload: &<Content as Endpoint>::PostPayload) -> Result<Content, Error> {
-        Ok(Content {
-            id: String::from("insert-uuid-here"),
-            title: payload.title.clone(),
-            body: payload.body.clone(),
-            summary: payload.summary.clone(),
-            created_at: chrono::Utc::now(),
-        })
-    }
-}
-impl ReadOne<Content> for Content {
-    fn read_one(id: &String) -> Result<Option<Content>, Error> {
+impl GetSingle for Content {
+    async fn get_single(id: &Self::Id) -> Result<Option<Self>, Error> {
         if let "invalid" = id.as_str() {
             return Err(Error::Unknown);
         }
@@ -44,54 +33,14 @@ impl ReadOne<Content> for Content {
         Ok(Some(Content::new()))
     }
 }
-
-// MARK: Repository
-/* impl Repository<Content, PostContent> for Content {
-    /*  fn create_one(payload: &PostContent) -> Result<Content, Error> {
-        if let "invalid" = payload.body.as_str() {
-            return Err(Error::Example);
-        }
+impl CreateSingle for Content {
+    async fn create_single(payload: &Self::PostPayload) -> Result<Self, Error> {
         Ok(Content {
-            id: String::from("11111111-2222-3333-4444-555555555555"),
+            id: String::from("uuid-from-database"),
             title: payload.title.clone(),
             body: payload.body.clone(),
             summary: payload.summary.clone(),
             created_at: chrono::Utc::now(),
         })
     }
-
-    fn read_one(id: &String) -> Result<Option<Content>, Error> {
-        if let "invalid" = id.as_str() {
-            return Err(Error::Unknown);
-        }
-        if let "unknown" = id.as_str() {
-            return Ok(None);
-        }
-        Ok(Some(Content::new()))
-    } */
-
-    fn read_all() -> Result<Vec<Content>, Error> {
-        Ok(vec![
-            Content::new(),
-            Content::new(),
-            Content::new(),
-            Content::new(),
-        ])
-    }
-
-    fn update_one(id: &String, payload: &PostContent) -> Result<Content, Error> {
-        let content: Content = Content {
-            id: id.clone(),
-            title: payload.title.clone(),
-            body: payload.body.clone(),
-            summary: payload.summary.clone(),
-            created_at: chrono::Utc::now(),
-        };
-        Ok(content)
-    }
-
-    fn delete_one(id: &String) -> Result<(), Error> {
-        Ok(())
-    }
 }
- */
