@@ -25,7 +25,7 @@ impl CreateSingle for Content {
 impl ReadSingle for Content {
     async fn read_single(id: &Self::Id) -> Result<Option<Self>, Error> {
         if let "invalid" = id.as_str() {
-            return Err(Error::Unknown);
+            return Err(Error::Unknown); // TODO: The user should not have to use lily errors, those are internal only
         }
         if let "unknown" = id.as_str() {
             return Ok(None);
