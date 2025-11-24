@@ -5,14 +5,14 @@ use axum::Router;
 use serde::{Deserialize, Serialize};
 
 pub trait RouteBuilder: Endpoint {
-    fn add_get_single_route(router: Router) -> Router;
     fn add_create_single_route(router: Router) -> Router;
+    fn add_read_single_route(router: Router) -> Router;
 }
 
 /// Generates an `axum::Router` for a type that implements the [`Endpoint`] trait.
 pub fn get_routes<T: Endpoint + RouteBuilder>() -> Router {
     let router: Router = Router::new();
-    let router = T::add_get_single_route(router);
+    let router = T::add_read_single_route(router);
     let router = T::add_create_single_route(router);
     router
 }
@@ -36,6 +36,6 @@ pub trait CreateSingle: Endpoint {
 }
 
 #[allow(async_fn_in_trait)]
-pub trait GetSingle: Endpoint {
-    async fn get_single(id: &Self::Id) -> Result<Option<Self>, Error>;
+pub trait ReadSingle: Endpoint {
+    async fn read_single(id: &Self::Id) -> Result<Option<Self>, Error>;
 }

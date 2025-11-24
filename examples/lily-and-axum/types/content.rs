@@ -1,6 +1,6 @@
 pub use lily_cms::prelude::*;
 
-#[endpoint(read_one, create_one)]
+#[endpoint(read_single, create_single)]
 pub struct Content {
     title: String,
     body: String,
@@ -22,19 +22,11 @@ impl Content {
     }
 }
 
-impl GetSingle for Content {
-    async fn get_single(id: &Self::Id) -> Result<Option<Self>, Error> {
-        if let "invalid" = id.as_str() {
-            return Err(Error::Unknown);
-        }
-        if let "unknown" = id.as_str() {
-            return Ok(None);
-        }
-        Ok(Some(Content::new()))
-    }
-}
 impl CreateSingle for Content {
     async fn create_single(payload: &Self::PostPayload) -> Result<Self, Error> {
+        if let "invalid" = payload.body.as_str() {
+            return Err(Error::Example);
+        }
         Ok(Content {
             id: String::from("uuid-from-database"),
             title: payload.title.clone(),
@@ -42,5 +34,17 @@ impl CreateSingle for Content {
             summary: payload.summary.clone(),
             created_at: chrono::Utc::now(),
         })
+    }
+}
+
+impl ReadSingle for Content {
+    async fn read_single(id: &Self::Id) -> Result<Option<Self>, Error> {
+        if let "invalid" = id.as_str() {
+            return Err(Error::Unknown);
+        }
+        if let "unknown" = id.as_str() {
+            return Ok(None);
+        }
+        Ok(Some(Content::new()))
     }
 }
