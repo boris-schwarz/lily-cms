@@ -9,6 +9,9 @@ pub fn get_route_builder(struct_names: &StructNames) -> TokenStream {
     quote! {
         impl RouteBuilder for #original_struct_name {
             fn add_get_single_route(router: Router) -> Router {
+                // TODO: return router if create_one is NOT generated...
+
+                // TODO: return following if create_one is generated:
                 async fn get_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>) -> ApiResponse<#original_struct_name> {
                     let result = #original_struct_name::get_single(&id).await;
 
@@ -30,9 +33,9 @@ pub fn get_route_builder(struct_names: &StructNames) -> TokenStream {
                 router.route(&#original_struct_name::get_path_with_id(), get(get_single_handler))
             }
             fn add_create_single_route(router: Router) -> Router {
-                // return router if create_one is NOT generated...
+                // TODO: return router if create_one is NOT generated...
 
-                // return following if create_one is generated:
+                // TODO: return following if create_one is generated:
                 async fn create_single_handler(Json(payload): Json<<#original_struct_name as Endpoint>::PostPayload>) -> ApiResponse<#original_struct_name> {
                     let result = #original_struct_name::create_single(&payload).await;
 
