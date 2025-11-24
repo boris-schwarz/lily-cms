@@ -1,6 +1,5 @@
 pub mod errors;
 pub mod problems;
-pub mod requests;
 pub mod responses;
 pub mod routing;
 pub mod prelude {
