@@ -98,7 +98,7 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     // MARK: 🔖Endpoints
     let impl_route_builder_code: proc_macro2::TokenStream =
-        routing::get_route_builder(&struct_names);
+        routing::get_route_builder(&struct_names, &enabled_actions);
 
     let impl_endpoint_code = quote! {
         impl Endpoint for #original_struct_name {
