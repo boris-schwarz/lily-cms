@@ -1,6 +1,6 @@
 //! Defines the primary `ApiResponse` type used by all Axum handlers.
 
-use crate::problems::Problem;
+use crate::problems::{JsonProblem, Problem};
 use axum::{
     Json,
     http::StatusCode,
@@ -33,11 +33,11 @@ impl<T: Serialize> IntoResponse for ApiResponse<T> {
             ApiResponse::Created(content) => (StatusCode::CREATED, Json(content)).into_response(),
             ApiResponse::NoContent => StatusCode::NO_CONTENT.into_response(),
             ApiResponse::NotFound(problem) => {
-                let json_problem = problem.to_json_problem();
+                let json_problem: JsonProblem = problem.into();
                 (json_problem.status, Json(json_problem)).into_response()
             }
             ApiResponse::Erroneous(problem) => {
-                let json_problem = problem.to_json_problem();
+                let json_problem: JsonProblem = problem.into();
                 (json_problem.status, Json(json_problem)).into_response()
             }
             ApiResponse::Custom(status_code, content) => {

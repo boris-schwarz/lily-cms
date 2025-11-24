@@ -51,7 +51,7 @@ impl IntoResponse for JsonProblem {
 /// An enum representing all possible high-level application errors.
 ///
 /// This is the primary error type to be used within the application's business
-/// logic. It should be converted into a [`JsonProblem`] via [`to_json_problem`]
+/// logic. It should be converted into a [`JsonProblem`] via [`into`]
 /// before being sent to the client.
 pub enum Problem {
     EndpointNotFound,
@@ -59,10 +59,9 @@ pub enum Problem {
     InternalError,
 }
 
-impl Problem {
-    /// Converts a high-level `Problem` into the serializable `JsonProblem`.
-    pub fn to_json_problem(self) -> JsonProblem {
-        match self {
+impl From<Problem> for JsonProblem {
+    fn from(problem: Problem) -> Self {
+        match problem {
             Problem::ResourceNotFound { resource, id } => {
                 let status_code = StatusCode::NOT_FOUND;
                 JsonProblem {
