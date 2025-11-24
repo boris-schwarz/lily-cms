@@ -7,21 +7,6 @@ pub struct Content {
     summary: Option<String>,
 }
 
-// 🐞 this is for debugging only
-impl Content {
-    fn new() -> Self {
-        Content {
-            id: String::from("11111111-2222-3333-4444-555555555555"),
-            title: String::from("Lorem Ipsum"),
-            body: String::from("#Doloribus Quia\nTenetur delectus rem:\n- Eveniet\n- Fugiat"),
-            summary: Some(String::from(
-                "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
-            )),
-            created_at: chrono::Utc::now(),
-        }
-    }
-}
-
 impl CreateSingle for Content {
     async fn create_single(payload: &Self::PostPayload) -> Result<Self, Error> {
         if let "invalid" = payload.body.as_str() {
@@ -45,6 +30,14 @@ impl ReadSingle for Content {
         if let "unknown" = id.as_str() {
             return Ok(None);
         }
-        Ok(Some(Content::new()))
+        Ok(Some(Content {
+            id: id.to_owned(),
+            title: String::from("Lorem Ipsum"),
+            body: String::from("#Doloribus Quia\nTenetur delectus rem:\n- Eveniet\n- Fugiat"),
+            summary: Some(String::from(
+                "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
+            )),
+            created_at: chrono::Utc::now(),
+        }))
     }
 }
