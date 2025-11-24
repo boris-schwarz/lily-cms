@@ -30,9 +30,12 @@ pub trait Endpoint: Serialize + Sized {
 /// A capability trait for creating a new resource.
 ///
 /// This trait should be implemented by the resource's business logic layer.
+#[allow(async_fn_in_trait)]
 pub trait CreateSingle: Endpoint {
     async fn create_single(payload: &Self::PostPayload) -> Result<Self, Error>;
 }
+
+#[allow(async_fn_in_trait)]
 pub trait GetSingle: Endpoint {
     async fn get_single(id: &Self::Id) -> Result<Option<Self>, Error>;
 }
