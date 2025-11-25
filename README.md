@@ -1,5 +1,10 @@
 # lily-cms
 
+Lily CMS aims to provide an easy DX (developer experience) to set up a headless CMS in a minute, so more time can be spent working on the actual project.
+
+> Lily CMS is a hobby project I'm working on while learning rust. It is not production-ready nor backed by anyone but my free time.
+
+
 ## Quick example
 1. Add the endpoint macro to your struct
 ```rust
@@ -16,8 +21,8 @@ let app = Router::new().route("/", get(|| async { "Hello, World!" }));
 let app = app.merge(get_routes::<Content>());
 ```
 
-## Run
-cargo run --example lily-and-axum
+## Run the existing example
+`cargo run --example lily-and-axum`
 
-## Debug Macro Generation
-cargo expand --example lily-and-axum > expanded_example.rs
+## Check what code is generated for the existing example
+`cargo expand --example lily-and-axum > expanded_example.rs`
