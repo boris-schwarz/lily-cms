@@ -17,12 +17,11 @@ pub struct Content {
 ```
 2. Add the routes for your type to the axum router
 ```rust
-let app = Router::new().route("/", get(|| async { "Hello, World!" }));
-let app = app.merge(get_routes::<Content>());
+let app = Router::new().merge(Content::routes());
 ```
 
 ## Run the existing example
-`cargo run --example lily-and-axum`
+`cargo run --example basic`
 
 ## Check what code is generated for the existing example
-`cargo expand --example lily-and-axum > expanded_example.rs`
+`cargo expand --example basic > expanded_basic_example.rs`

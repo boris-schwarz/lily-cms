@@ -7,14 +7,13 @@ use serde::{Deserialize, Serialize};
 pub trait RouteBuilder: Endpoint {
     fn add_create_single_route(router: Router) -> Router;
     fn add_read_single_route(router: Router) -> Router;
-}
 
-/// Generates an `axum::Router` for a type that implements the [`Endpoint`] trait.
-pub fn get_routes<T: Endpoint + RouteBuilder>() -> Router {
-    let router: Router = Router::new();
-    let router = T::add_read_single_route(router);
-    let router = T::add_create_single_route(router);
-    router
+    fn routes() -> Router {
+        let router: Router = Router::new();
+        let router = Self::add_read_single_route(router);
+        let router = Self::add_create_single_route(router);
+        router
+    }
 }
 
 /// Defines the contract for a type that can be exposed as a REST API endpoint.
