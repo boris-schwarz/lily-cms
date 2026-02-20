@@ -35,7 +35,6 @@ Content-Type: application/json
 ```
 {
     "title": "a",
-    "body": "b",
     "summary": "c"
 }
 ```
@@ -44,5 +43,5 @@ HTTP 200
 [Asserts]
 jsonpath "$.id" == "some-id-here"
 jsonpath "$.title" == "a"
-jsonpath "$.body" == "b"
+jsonpath "$.body" == "existing body"
 jsonpath "$.summary" == "c"

@@ -44,14 +44,18 @@ impl ReadSingle for Content {
 
 impl UpdateSingle for Content {
     async fn update_single(id: &Self::Id, payload: &Self::UpdatePayload) -> Result<Self, Error> {
-        if let "invalid" = payload.body.as_str() {
+        let existing_title = payload.title.clone().unwrap_or("existing title".to_owned());
+        if let "invalid" = existing_title.as_str() {
             return Err(Error::Example);
         }
         Ok(Content {
             id: id.clone(),
-            title: payload.title.clone(),
-            body: payload.body.clone(),
-            summary: payload.summary.clone(),
+            title: existing_title,
+            body: payload.body.clone().unwrap_or("existing body".to_owned()),
+            summary: payload
+                .summary
+                .clone()
+                .or(Some("existing summary".to_owned())),
             created_at: chrono::Utc::now(),
         })
     }

@@ -8,6 +8,8 @@ use syn::{
 };
 use util::to_snake_case;
 
+use crate::util::is_option;
+
 mod routing;
 mod util;
 
@@ -62,6 +64,21 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
         panic!("This macro only works on structs with named fields");
     };
 
+    let optional_fields: Vec<proc_macro2::TokenStream> = original_fields
+        .iter()
+        .map(|field| {
+            let name = &field.ident;
+            let ty = &field.ty;
+            let attrs = &field.attrs;
+
+            if is_option(ty) {
+                quote! { #(#attrs)* #name: #ty }
+            } else {
+                quote! { #(#attrs)* #name: Option<#ty> }
+            }
+        })
+        .collect();
+
     // Create the code for the create-payload (POST) struct
     let create_payload_tokens: proc_macro2::TokenStream = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
@@ -74,8 +91,7 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
     let update_payload_tokens: proc_macro2::TokenStream = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
         pub struct #update_payload_name {
-            // TODO: Make all Option<OriginalType>
-            #original_fields
+            #(#optional_fields),*
         }
     };
 

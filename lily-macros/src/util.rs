@@ -35,3 +35,18 @@ pub fn to_snake_case(input: &str) -> String {
 pub fn to_kebab_case(input: &str) -> String {
     to_snake_case(input).replace("_", "-")
 }
+
+/// Checks wether a value of type syn::data::Field::Type is of type Option
+///
+/// # Examples
+/// ```
+/// if is_option(&field.ty) {}
+/// ```
+pub fn is_option(ty: &syn::Type) -> bool {
+    if let syn::Type::Path(type_path) = ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            return segment.ident == "Option";
+        }
+    }
+    false
+}
