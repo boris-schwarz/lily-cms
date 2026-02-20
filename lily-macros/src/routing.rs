@@ -1,8 +1,9 @@
 use crate::StructNames;
+use crate::util::to_kebab_case;
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
-use strum::EnumIter;
+use strum::{Display, EnumIter};
 
 pub fn get_route_builder(
     struct_names: &StructNames,
@@ -14,7 +15,7 @@ pub fn get_route_builder(
     // MARK: Create Single
     let add_create_single_route_code: TokenStream = if enabled_actions.contains("create_single") {
         quote! {
-            async fn create_single_handler(Json(payload): Json<<#original_struct_name as Endpoint>::PostPayload>) -> ApiResponse<#original_struct_name> {
+            async fn create_single_handler(Json(payload): Json<<#original_struct_name as Endpoint>::CreatePayload>) -> ApiResponse<#original_struct_name> {
                 let result = #original_struct_name::create_single(&payload).await;
 
                 match result {
@@ -59,6 +60,27 @@ pub fn get_route_builder(
         return_router_code()
     };
 
+    // MARK: Update Single
+    let add_update_single_route_tokens: TokenStream = if enabled_actions.contains("update_single") {
+        quote! {
+            async fn update_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>, Json(payload): Json<<#original_struct_name as Endpoint>::UpdatePayload>) -> ApiResponse<#original_struct_name> {
+                let result = #original_struct_name::update_single(&id, &payload).await;
+
+                match result {
+                    Ok(data) => ApiResponse::Ok(data),
+                    Err(error_msg) => {
+                        eprintln!(concat!("Error updating single [", #snake_name, "]: {}"), error_msg);
+                        ApiResponse::Erroneous::<#original_struct_name>(Problem::InternalError)
+                    }
+                }
+            }
+
+            router.route(&#original_struct_name::get_path_with_id(), patch(update_single_handler))
+        }
+    } else {
+        return_router_code()
+    };
+
     // MARK: RouteBuilder
     quote! {
         impl RouteBuilder for #original_struct_name {
@@ -67,6 +89,9 @@ pub fn get_route_builder(
             }
             fn add_read_single_route(router: Router) -> Router {
                 #add_read_single_route_code
+            }
+            fn add_update_single_route(router: Router) -> Router {
+                #add_update_single_route_tokens
             }
         }
     }
@@ -78,7 +103,7 @@ fn return_router_code() -> TokenStream {
     }
 }
 
-#[derive(Debug, EnumIter)]
+#[derive(Debug, Display, EnumIter)]
 pub enum Routes {
     CreateSingle,
     CreateMultiple,
@@ -93,18 +118,8 @@ pub enum Routes {
 }
 
 impl Routes {
-    pub fn get_path(&self) -> &'static str {
-        match self {
-            Routes::CreateSingle => "create_single",
-            Routes::CreateMultiple => "create_multiple",
-            Routes::ReadSingle => "read_single",
-            Routes::ReadMultiple => "read_multiple",
-            Routes::ReplaceSingle => "replace_single",
-            Routes::ReplaceMultiple => "replace_multiple",
-            Routes::UpdateSingle => "update_single",
-            Routes::UpdateMultiple => "update_multiple",
-            Routes::DeleteSingle => "delete_single",
-            Routes::DeleteMultiple => "delete_multiple",
-        }
+    pub fn get_path(&self) -> String {
+        let variant = self.to_string();
+        to_kebab_case(&variant)
     }
 }

@@ -6,22 +6,24 @@ use syn::{
     Fields, Ident, ItemStruct, Token, parse::Parser, parse_macro_input, parse_quote,
     punctuated::Punctuated,
 };
+use util::to_snake_case;
 
 mod routing;
+mod util;
 
 struct StructNames {
     original: syn::Ident,
     snake_case: String,
-    post_payload_name: syn::Ident,
-    patch_payload_name: syn::Ident,
+    create_payload_name: syn::Ident,
+    update_payload_name: syn::Ident,
 }
 impl StructNames {
     fn new(ast: &ItemStruct) -> Self {
         let struct_name: syn::Ident = ast.ident.clone();
         let snake_case = to_snake_case(&struct_name.to_string());
         StructNames {
-            post_payload_name: format_ident!("Post{}", &struct_name),
-            patch_payload_name: format_ident!("Patch{}", &struct_name),
+            create_payload_name: format_ident!("Create{}", &struct_name),
+            update_payload_name: format_ident!("Update{}", &struct_name),
             original: struct_name,
             snake_case: snake_case,
         }
@@ -34,8 +36,8 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
     let struct_names = StructNames::new(&struct_ast);
     let original_struct_name: &syn::Ident = &struct_names.original;
-    let post_payload_name: &syn::Ident = &struct_names.post_payload_name;
-    let patch_payload_name: &syn::Ident = &struct_names.patch_payload_name;
+    let create_payload_name: &syn::Ident = &struct_names.create_payload_name;
+    let update_payload_name: &syn::Ident = &struct_names.update_payload_name;
     let snake_name: &String = &struct_names.snake_case;
 
     // Parse macro arguments
@@ -60,18 +62,18 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
         panic!("This macro only works on structs with named fields");
     };
 
-    // Create the code for the POST payload struct
-    let post_payload_code: proc_macro2::TokenStream = quote! {
+    // Create the code for the create-payload (POST) struct
+    let create_payload_tokens: proc_macro2::TokenStream = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
-        pub struct #post_payload_name {
+        pub struct #create_payload_name {
             #original_fields
         }
     };
 
-    // Create the code for the PATCH payload struct
-    let patch_payload_code: proc_macro2::TokenStream = quote! {
+    // Create the code for the update-payload (PATCH) struct
+    let update_payload_tokens: proc_macro2::TokenStream = quote! {
         #[derive(Clone, Debug, serde::Deserialize)]
-        pub struct #patch_payload_name {
+        pub struct #update_payload_name {
             // TODO: Make all Option<OriginalType>
             #original_fields
         }
@@ -97,14 +99,14 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
     struct_ast.attrs.push(derives);
 
     // MARK: 🔖Endpoints
-    let impl_route_builder_code: proc_macro2::TokenStream =
+    let impl_route_builder_tokens: proc_macro2::TokenStream =
         routing::get_route_builder(&struct_names, &enabled_actions);
 
-    let impl_endpoint_code = quote! {
+    let impl_endpoint_tokens = quote! {
         impl Endpoint for #original_struct_name {
             type Id = String;
-            type PostPayload = #post_payload_name;
-            // type PatchPayload = #patch_payload_name;
+            type CreatePayload = #create_payload_name;
+            type UpdatePayload = #update_payload_name;
 
             fn get_name() -> String {
                 #snake_name.to_owned()
@@ -123,39 +125,11 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
     // Generate code
     let output = quote! {
         #struct_ast
-        #post_payload_code
-        #patch_payload_code
-        #impl_endpoint_code
-        #impl_route_builder_code
+        #create_payload_tokens
+        #update_payload_tokens
+        #impl_endpoint_tokens
+        #impl_route_builder_tokens
     };
 
     output.into()
-}
-
-/// Converts a string from lowerCamelCase to snake_case
-///
-/// # Examples
-/// ```
-/// let snake_case: String = to_snake_case("lowerCamelCase");
-/// ```
-///
-/// # Note
-/// This function was created by Claude Code
-/// TODO: Verify that it's doing what it should do
-fn to_snake_case(input: &str) -> String {
-    let mut result = String::new();
-
-    for (i, c) in input.char_indices() {
-        if c.is_uppercase() {
-            // Add underscore if not the first character
-            if i > 0 {
-                result.push('_');
-            }
-            result.push(c.to_lowercase().next().unwrap());
-        } else {
-            result.push(c);
-        }
-    }
-
-    result
 }

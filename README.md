@@ -25,3 +25,5 @@ let app = Router::new().merge(Content::routes());
 
 ## Check what code is generated for the existing example
 `cargo expand --example basic > expanded_basic_example.rs`
+
+This requires (cargo-expand)[https://crates.io/crates/cargo-expand]. Installation via `cargo install cargo-expand`

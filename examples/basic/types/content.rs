@@ -1,6 +1,6 @@
 pub use lily_cms::prelude::*;
 
-#[endpoint(read_single, create_single)]
+#[endpoint(create_single, read_single, update_single)]
 pub struct Content {
     title: String,
     body: String,
@@ -8,7 +8,7 @@ pub struct Content {
 }
 
 impl CreateSingle for Content {
-    async fn create_single(payload: &Self::PostPayload) -> Result<Self, Error> {
+    async fn create_single(payload: &Self::CreatePayload) -> Result<Self, Error> {
         if let "invalid" = payload.body.as_str() {
             return Err(Error::Example);
         }
@@ -39,5 +39,20 @@ impl ReadSingle for Content {
             )),
             created_at: chrono::Utc::now(),
         }))
+    }
+}
+
+impl UpdateSingle for Content {
+    async fn update_single(id: &Self::Id, payload: &Self::UpdatePayload) -> Result<Self, Error> {
+        if let "invalid" = payload.body.as_str() {
+            return Err(Error::Example);
+        }
+        Ok(Content {
+            id: id.clone(),
+            title: payload.title.clone(),
+            body: payload.body.clone(),
+            summary: payload.summary.clone(),
+            created_at: chrono::Utc::now(),
+        })
     }
 }

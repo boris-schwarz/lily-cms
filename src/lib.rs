@@ -6,7 +6,7 @@ pub mod prelude {
     pub use crate::Error;
     pub use crate::problems::Problem;
     pub use crate::responses::ApiResponse;
-    pub use crate::routing::{CreateSingle, Endpoint, ReadSingle, RouteBuilder};
+    pub use crate::routing::{CreateSingle, Endpoint, ReadSingle, RouteBuilder, UpdateSingle};
     pub use axum::{
         Json, Router,
         extract::Path,
@@ -20,4 +20,4 @@ pub mod prelude {
 pub use errors::Error;
 pub use problems::Problem;
 pub use responses::ApiResponse;
-pub use routing::{CreateSingle, Endpoint, ReadSingle, RouteBuilder};
+pub use routing::{CreateSingle, Endpoint, ReadSingle, RouteBuilder, UpdateSingle};
