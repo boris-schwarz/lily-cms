@@ -1,6 +1,6 @@
 pub use lily_cms::prelude::*;
 
-#[endpoint(create_single, read_single, update_single)]
+#[endpoint(create_single, read_single, update_single, delete_single)]
 pub struct Content {
     title: String,
     body: String,
@@ -58,5 +58,25 @@ impl UpdateSingle for Content {
                 .or(Some("existing summary".to_owned())),
             created_at: chrono::Utc::now(),
         })
+    }
+}
+
+impl DeleteSingle for Content {
+    async fn delete_single(id: &Self::Id) -> Result<Option<Self>, Error> {
+        if let "invalid" = id.as_str() {
+            return Err(Error::Unknown); // TODO: The user should not have to use lily errors, those are internal only
+        }
+        if let "unknown" = id.as_str() {
+            return Ok(None);
+        }
+        Ok(Some(Content {
+            id: id.to_owned(),
+            title: String::from("Lorem Ipsum"),
+            body: String::from("#Doloribus Quia\nTenetur delectus rem:\n- Eveniet\n- Fugiat"),
+            summary: Some(String::from(
+                "Lorem ipsum dolor sit amet consectetur adipisicing elit.",
+            )),
+            created_at: chrono::Utc::now(),
+        }))
     }
 }

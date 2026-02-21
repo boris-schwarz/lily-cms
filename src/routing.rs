@@ -8,12 +8,16 @@ pub trait RouteBuilder: Endpoint {
     fn add_create_single_route(router: Router) -> Router;
     fn add_read_single_route(router: Router) -> Router;
     fn add_update_single_route(router: Router) -> Router;
+    // fn add_replace_single_route(router: Router) -> Router;
+    fn add_delete_single_route(router: Router) -> Router;
 
     fn routes() -> Router {
         let router: Router = Router::new();
         let router = Self::add_create_single_route(router);
         let router = Self::add_read_single_route(router);
         let router = Self::add_update_single_route(router);
+        // let router = Self::add_replace_single_route(router);
+        let router = Self::add_delete_single_route(router);
         router
     }
 }
@@ -42,4 +46,14 @@ pub trait ReadSingle: Endpoint {
 #[allow(async_fn_in_trait)]
 pub trait UpdateSingle: Endpoint {
     async fn update_single(id: &Self::Id, payload: &Self::UpdatePayload) -> Result<Self, Error>;
+}
+
+// #[allow(async_fn_in_trait)]
+// pub trait ReplaceSingle: Endpoint {
+//     async fn replace_single(id: &Self::Id, payload: &Self::UpdatePayload) -> Result<Self, Error>;
+// }
+
+#[allow(async_fn_in_trait)]
+pub trait DeleteSingle: Endpoint {
+    async fn delete_single(id: &Self::Id) -> Result<Option<Self>, Error>;
 }

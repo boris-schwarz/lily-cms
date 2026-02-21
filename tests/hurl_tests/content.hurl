@@ -45,3 +45,16 @@ jsonpath "$.id" == "some-id-here"
 jsonpath "$.title" == "a"
 jsonpath "$.body" == "existing body"
 jsonpath "$.summary" == "c"
+
+
+
+# Delete Single
+DELETE {{target}}/content/some-id-here
+HTTP 200
+
+[Asserts]
+jsonpath "$.id" == "some-id-here"
+jsonpath "$.title" contains "Lorem"
+jsonpath "$.body" contains "Doloribus"
+jsonpath "$.summary" contains "sit amet"
+# TODO: update this test when return format changes
