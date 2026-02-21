@@ -1,7 +1,7 @@
 mod hurl 'tests/hurl.just'
 
 run:
-    cargo run
+    cargo run --example basic
 
 test:
     just hurl test
