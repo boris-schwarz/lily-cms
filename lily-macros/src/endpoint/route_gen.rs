@@ -1,9 +1,34 @@
 use crate::StructNames;
-use crate::util::to_kebab_case;
+use crate::util::{to_kebab_case, to_snake_case};
 use proc_macro2::TokenStream;
 use quote::quote;
 use std::collections::HashSet;
 use strum::{Display, EnumIter};
+
+#[derive(Debug, Display, EnumIter)]
+pub enum Routes {
+    CreateSingle,
+    CreateMultiple,
+    ReadSingle,
+    ReadMultiple,
+    ReplaceSingle,
+    ReplaceMultiple,
+    UpdateSingle,
+    UpdateMultiple,
+    DeleteSingle,
+    DeleteMultiple,
+}
+
+impl Routes {
+    pub fn get_path(&self) -> String {
+        let variant = self.to_string();
+        to_kebab_case(&variant)
+    }
+    pub fn as_snake_case(&self) -> String {
+        let variant = self.to_string();
+        to_snake_case(&variant)
+    }
+}
 
 pub fn get_route_builder(
     struct_names: &StructNames,
@@ -154,26 +179,5 @@ pub fn get_route_builder(
 fn return_router_code() -> TokenStream {
     quote! {
         router
-    }
-}
-
-#[derive(Debug, Display, EnumIter)]
-pub enum Routes {
-    CreateSingle,
-    CreateMultiple,
-    ReadSingle,
-    ReadMultiple,
-    ReplaceSingle,
-    ReplaceMultiple,
-    UpdateSingle,
-    UpdateMultiple,
-    DeleteSingle,
-    DeleteMultiple,
-}
-
-impl Routes {
-    pub fn get_path(&self) -> String {
-        let variant = self.to_string();
-        to_kebab_case(&variant)
     }
 }

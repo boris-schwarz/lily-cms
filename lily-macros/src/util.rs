@@ -1,3 +1,25 @@
+use quote::format_ident;
+use syn::ItemStruct;
+
+pub struct StructNames {
+    pub original: syn::Ident,
+    pub snake_case: String,
+    pub create_payload_name: syn::Ident,
+    pub update_payload_name: syn::Ident,
+}
+impl From<&ItemStruct> for StructNames {
+    fn from(ast: &ItemStruct) -> Self {
+        let struct_name: syn::Ident = ast.ident.clone();
+        let snake_case = to_snake_case(&struct_name.to_string());
+        StructNames {
+            create_payload_name: format_ident!("Create{}", &struct_name),
+            update_payload_name: format_ident!("Update{}", &struct_name),
+            original: struct_name,
+            snake_case: snake_case,
+        }
+    }
+}
+
 /// Converts a string from lowerCamelCase to snake_case
 ///
 /// # Examples
