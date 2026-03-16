@@ -1,0 +1,11 @@
+[package]
+name = "lily"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+lily-core = { path = "../lily-core" }
+lily-endpoint = { path = "../lily-endpoint" }
+lily-macros = { path = "../lily-macros" }
+axum = { workspace = true }
+tokio = { workspace = true }

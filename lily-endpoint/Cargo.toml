@@ -1,0 +1,12 @@
+[package]
+name = "lily-endpoint"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+lily-core = { workspace = true }
+axum = { workspace = true }
+chrono = { workspace = true }
+http-serde = { workspace = true }
+serde = { workspace = true }
+tokio = { workspace = true }

@@ -28,3 +28,21 @@ pub fn endpoint(attr: TokenStream, item: TokenStream) -> TokenStream {
 
     output.into()
 }
+
+#[proc_macro_attribute]
+pub fn persistent(attr: TokenStream, item: TokenStream) -> TokenStream {
+    let tmp_item: proc_macro2::TokenStream = item.clone().into();
+
+    // Parse struct
+    let struct_ast: ItemStruct = parse_macro_input!(item as ItemStruct);
+
+    // Generate struct names
+    let struct_names = StructNames::from(&struct_ast);
+
+    // Return token stream
+    let output = quote! {
+        #tmp_item
+    };
+
+    output.into()
+}

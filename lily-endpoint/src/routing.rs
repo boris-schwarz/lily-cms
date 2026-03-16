@@ -1,7 +1,7 @@
 //! Provides traits and functions for building REST API endpoints from structs
 
-use crate::Error;
 use axum::Router;
+use lily_core::Error;
 use serde::{Deserialize, Serialize};
 
 pub trait RouteBuilder: Endpoint {

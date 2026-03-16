@@ -1,13 +1,27 @@
-[package]
-name = "lily-cms"
+[workspace]
+members = [
+    "lily",
+    "lily-core",
+    "lily-endpoint",
+    "lily-macros",
+    "examples/basic"
+]
+resolver = "3"
+
+[workspace.package]
 version = "0.1.0"
 edition = "2024"
 
-[dependencies]
-lily-macros = { path = "./lily-macros" }
+[workspace.dependencies]
+# internal dependencies
+lily-core = { path = "lily-core" }
+lily-endpoint = { path = "lily-endpoint" }
+lily-macros = { path = "lily-macros" }
+
+# external dependencies
 axum = "0.8.4"
 serde = { version = "1.0.219", features = ["derive"] }
+chrono = { version = "0.4.41", features = ["serde"] }
 thiserror = "2.0.15"
 tokio = { version = "1.45.1", features = ["full"] }
-chrono = {version="0.4.41", features=["serde"]}
 http-serde = "2.1.1"

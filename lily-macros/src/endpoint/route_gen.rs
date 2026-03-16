@@ -40,7 +40,7 @@ pub fn get_route_builder(
     // MARK: Create Single
     let add_create_single_route_tokens: TokenStream = if enabled_actions.contains("create_single") {
         quote! {
-            async fn create_single_handler(Json(payload): Json<<#original_struct_name as Endpoint>::CreatePayload>) -> ApiResponse<#original_struct_name> {
+            async fn create_single_handler(axum::Json(payload): axum::Json<<#original_struct_name as Endpoint>::CreatePayload>) -> ApiResponse<#original_struct_name> {
                 let result = #original_struct_name::create_single(&payload).await;
 
                 match result {
@@ -52,7 +52,7 @@ pub fn get_route_builder(
                 }
             }
 
-            router.route(&#original_struct_name::get_path(), post(create_single_handler))
+            router.route(&#original_struct_name::get_path(), axum::routing::post(create_single_handler))
         }
     } else {
         return_router_code()
@@ -61,7 +61,7 @@ pub fn get_route_builder(
     // MARK: Read Single
     let add_read_single_route_tokens: TokenStream = if enabled_actions.contains("read_single") {
         quote! {
-            async fn read_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>) -> ApiResponse<#original_struct_name> {
+            async fn read_single_handler(axum::extract::Path(id): axum::extract::Path<<#original_struct_name as Endpoint>::Id>) -> ApiResponse<#original_struct_name> {
                 let result = #original_struct_name::read_single(&id).await;
 
                 match result {
@@ -79,7 +79,7 @@ pub fn get_route_builder(
                 }
             }
 
-            router.route(&#original_struct_name::get_path_with_id(), get(read_single_handler))
+            router.route(&#original_struct_name::get_path_with_id(), axum::routing::get(read_single_handler))
         }
     } else {
         return_router_code()
@@ -88,7 +88,7 @@ pub fn get_route_builder(
     // MARK: Update Single
     let add_update_single_route_tokens: TokenStream = if enabled_actions.contains("update_single") {
         quote! {
-            async fn update_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>, Json(payload): Json<<#original_struct_name as Endpoint>::UpdatePayload>) -> ApiResponse<#original_struct_name> {
+            async fn update_single_handler(axum::extract::Path(id): axum::extract::Path<<#original_struct_name as Endpoint>::Id>, axum::Json(payload): axum::Json<<#original_struct_name as Endpoint>::UpdatePayload>) -> ApiResponse<#original_struct_name> {
                 let result = #original_struct_name::update_single(&id, &payload).await;
 
                 match result {
@@ -100,7 +100,7 @@ pub fn get_route_builder(
                 }
             }
 
-            router.route(&#original_struct_name::get_path_with_id(), patch(update_single_handler))
+            router.route(&#original_struct_name::get_path_with_id(), axum::routing::patch(update_single_handler))
         }
     } else {
         return_router_code()
@@ -109,7 +109,7 @@ pub fn get_route_builder(
     // MARK: Replace Single
     // let add_replace_single_route_tokens: TokenStream = if enabled_actions.contains("replace_single") {
     //     quote! {
-    //         async fn replace_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>, Json(payload): Json<<#original_struct_name as Endpoint>::ReplacePayload>) -> ApiResponse<#original_struct_name> {
+    //         async fn replace_single_handler(axum::extract::Path(id): axum::extract::Path<<#original_struct_name as Endpoint>::Id>, axum::Json(payload): axum::Json<<#original_struct_name as Endpoint>::ReplacePayload>) -> ApiResponse<#original_struct_name> {
     //             let result = #original_struct_name::replace_single(&id, &payload).await;
 
     //             match result {
@@ -130,7 +130,7 @@ pub fn get_route_builder(
     // // MARK: Delete Single
     let add_delete_single_route_tokens: TokenStream = if enabled_actions.contains("delete_single") {
         quote! {
-            async fn delete_single_handler(Path(id): Path<<#original_struct_name as Endpoint>::Id>) -> ApiResponse<#original_struct_name> {
+            async fn delete_single_handler(axum::extract::Path(id): axum::extract::Path<<#original_struct_name as Endpoint>::Id>) -> ApiResponse<#original_struct_name> {
                 let result = #original_struct_name::delete_single(&id).await;
 
                 match result {
@@ -148,7 +148,7 @@ pub fn get_route_builder(
                 }
             }
 
-            router.route(&#original_struct_name::get_path_with_id(), delete(delete_single_handler))
+            router.route(&#original_struct_name::get_path_with_id(), axum::routing::delete(delete_single_handler))
         }
     } else {
         return_router_code()
@@ -157,19 +157,19 @@ pub fn get_route_builder(
     // MARK: RouteBuilder
     quote! {
         impl RouteBuilder for #original_struct_name {
-            fn add_create_single_route(router: Router) -> Router {
+            fn add_create_single_route(router: axum::Router) -> axum::Router {
                 #add_create_single_route_tokens
             }
-            fn add_read_single_route(router: Router) -> Router {
+            fn add_read_single_route(router: axum::Router) -> axum::Router {
                 #add_read_single_route_tokens
             }
-            fn add_update_single_route(router: Router) -> Router {
+            fn add_update_single_route(router: axum::Router) -> axum::Router {
                 #add_update_single_route_tokens
             }
-            // fn add_replace_single_route(router: Router) -> Router {
+            // fn add_replace_single_route(router: axum::Router) -> axum::Router {
             //     #add_replace_single_route_tokens
             // }
-            fn add_delete_single_route(router: Router) -> Router {
+            fn add_delete_single_route(router: axum::Router) -> axum::Router {
                 #add_delete_single_route_tokens
             }
         }

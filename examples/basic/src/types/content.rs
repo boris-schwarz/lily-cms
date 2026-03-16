@@ -1,4 +1,4 @@
-pub use lily_cms::prelude::*;
+pub use lily::prelude::*;
 
 #[endpoint(create_single, read_single, update_single, delete_single)]
 pub struct Content {
